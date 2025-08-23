@@ -1,16 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { UserService } from "../services/userService";
 
-
 export class UserController {
     static async signUp(req: Request, res: Response, next: NextFunction) {
         try {
             const registerData = req.body
-            const [user, err] = await UserService.signUp(registerData);
-            if (err) {
-                throw err
-            }
-
+            const user = await UserService.signUp(registerData);
             return res.status(201).json({
                 message: "User registered successfully",
                 data: user
