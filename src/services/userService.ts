@@ -6,6 +6,7 @@ import { SECRET_KEY } from "../../shared/middleware/jwt";
 import { CustomError } from "../../shared/custom_error/errors";
 import { User } from "../domain/user/user";
 import { AuthValidator } from "../../shared/validators/authValidator";
+import redis from "../infrastructure/redisClient";
 
 export class UserService {
     static async signUp(data: CreateUserRequest): Promise<Omit<User, 'password'>> {
@@ -65,6 +66,8 @@ export class UserService {
         }
 
         const token = jwt.sign(payload, SECRET_KEY, { expiresIn: '24h' })
+
+        await redis.setex(token, 60 * 60 * 24, existingUser.id);
 
         return { userId: existingUser.id, token }
     }
