@@ -1,6 +1,7 @@
 import express from "express";
 import { errorHandler } from "../shared/middleware/errorHandler";
 import router from "./router/router";
+import redis from "./infrastructure/redisClient";
 
 const app = express();
 
@@ -9,7 +10,12 @@ app.use("/api/v1", router)
 
 app.use(errorHandler);
 
-
-app.listen(5000, () => {
-    console.log("Terhubung")
-})
+const PORT = 5000
+app.listen(PORT, async () => {
+    try {
+        await redis.ping();
+        console.log(`🚀 Server running on http://localhost:${PORT}`);
+    } catch (error) {
+        console.error("❌ Redis not connected", error);
+    }
+});
