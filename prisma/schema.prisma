@@ -1,12 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -15,10 +9,171 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid()) @db.Uuid
-  fullName  String
-  email     String   @unique
-  password  String
+  id        String     @id @default(uuid())
+  fullName  String     
+  email     String     @unique
+  password  String     
+  avatar    String?    
+  bio       String?    
+  isActive  Boolean    @default(true)
+  
+  // Relations
+  recipes   Recipe[]
+  comments  Comment[]
+  reactions Reaction[]
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  @@map("users")
+}
+
+model Recipe {
+  id           String             @id @default(uuid())
+  title        String
+  description  String
+  imageUrl     String?
+  servings     Int?               
+  cookingTime  Int?               
+  difficulty   DifficultyLevel    @default(MEDIUM)
+  isPublished  Boolean            @default(false) 
+  
+  // Relations
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  ingredients  RecipeIngredient[]
+  comments     Comment[]
+  reactions    Reaction[]
+  category     Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId   String?
+  
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  
+  @@index([userId])
+  @@index([categoryId])
+  @@index([isPublished])
+  @@map("recipes")
+}
+
+model Ingredient {
+  id          String             @id @default(uuid())
+  name        String             @unique
+  description String?
+  category    String?            
+  
+  // Relations
+  recipes     RecipeIngredient[]
+  
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  
+  @@map("ingredients")
+}
+
+model RecipeIngredient {
+  id           String     @id @default(uuid())
+  quantity     Float      
+  unit         Unit       
+  notes        String?    
+  
+  // Relations
+  recipe       Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId     String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  ingredientId String
+  
+  @@unique([recipeId, ingredientId])
+  @@map("recipe_ingredients")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  rating    Int?     @default(0) 
+  
+  // Relations  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId  String
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  @@index([recipeId])
+  @@map("comments")
+}
+
+model Reaction {
+  id       String      @id @default(uuid())
+  type     ReactionType
+  
+  // Relations
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  recipe   Recipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId String
+  
+  createdAt DateTime   @default(now())
+  
+  @@unique([userId, recipeId])
+  @@map("reactions")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  color       String?  
+  icon        String?  
+  
+  // Relations
+  recipes     Recipe[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("categories")
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  DISLIKE
+}
+
+enum Unit {
+  // Weight
+  GRAM
+  KILOGRAM
+  OUNCE
+  POUND
+  
+  // Volume
+  MILLILITER
+  LITER
+  TEASPOON
+  TABLESPOON
+  CUP
+  PINT
+  QUART
+  GALLON
+  
+  // Quantity
+  PIECE
+  SLICE
+  CLOVE
+  BUNCH
+  PINCH
+  DASH
+  
+  // Other
+  TO_TASTE
 }
