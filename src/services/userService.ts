@@ -4,55 +4,68 @@ import { hashPassword, comparePassword } from "../../shared/utils/hash";
 import jwt from "jsonwebtoken"
 import { SECRET_KEY } from "../../shared/middleware/jwt";
 import { CustomError } from "../../shared/custom_error/errors";
+import { User } from "../domain/user/user";
+import { AuthValidator } from "../../shared/validators/authValidator";
 
 export class UserService {
-    static async signUp(data: CreateUserRequest) {
-        if (data == null) {
-            throw new CustomError("Input cannot be empty", 400)
-        }
+    static async signUp(data: CreateUserRequest): Promise<Omit<User, 'password'>> {
+        AuthValidator.validateSignUpData(data)
 
-        const [exsitingUser, findError] = await UserRepository.findByEmail(data.email)
+        const normalizedEmail = data.email.toLowerCase().trim();
+
+        const [existingUser, findError] = await UserRepository.findByEmail(normalizedEmail)
         if (findError) {
             throw new CustomError("Internal server error", 500);
         }
-        if (exsitingUser) {
-            throw new CustomError("Email already registered", 404)
+        if (existingUser) {
+            throw new CustomError("Email already registered", 409)
         }
 
-        const hasedPassword = await hashPassword(data.password);
-        const [userSignIn, error] = await UserRepository.signUp({ ...data, passwordHasing: hasedPassword })
+        const hashedPassword = await hashPassword(data.password);
+        const [newUser, error] = await UserRepository.signUp({
+            fullName: data.fullName.trim(),
+            email: data.email,
+            password: hashedPassword,
+            avatar: null,
+            bio: null
+        })
+
         if (error) {
-            throw new CustomError("Internal server error", 500);
+            throw new CustomError("Failed to create user", 500);
+        }
+        if (!newUser) {
+            throw new CustomError("Failed to create user", 500);
         }
 
-        return [userSignIn, null]
+        const { password, ...userWithoutPassword } = newUser;
+        return userWithoutPassword;
     }
 
-    static async signIn(data: LoginUserRequest): Promise<{ payload: { userId: string, email: string }, token: string }> {
-        if (data == null) {
-            throw new CustomError("Input cannot be empty", 400)
-        }
+    static async signIn(data: LoginUserRequest): Promise<{ userId: string, token: string }> {
+        AuthValidator.validateSignInData(data)
 
-        const [exsitingUser, findError] = await UserRepository.findByEmail(data.email)
-        if (!exsitingUser) {
-            throw new CustomError("Email not found!", 404)
-        }
+        const normalizedEmail = data.email.toLowerCase().trim();
+
+        const [existingUser, findError] = await UserRepository.findByEmail(normalizedEmail)
         if (findError) {
             throw new CustomError("Internal server error", 500);
         }
+        if (!existingUser) {
+            throw new CustomError("Invalid email or password", 401)
+        }
 
-        const isMatch = await comparePassword(data.password, exsitingUser.password)
+        const isMatch = await comparePassword(data.password, existingUser.password)
         if (!isMatch) {
-            throw new CustomError("Incorrect password, please check again", 401);
+            throw new CustomError("Invalid email or password", 401);
         }
 
         const payload = {
-            userId: exsitingUser.id,
-            email: exsitingUser.email
+            userId: existingUser.id,
+            email: existingUser.email
         }
 
         const token = jwt.sign(payload, SECRET_KEY, { expiresIn: '24h' })
 
-        return { payload, token: token }
+        return { userId: existingUser.id, token }
     }
 }
