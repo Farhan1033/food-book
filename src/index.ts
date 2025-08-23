@@ -1,6 +1,6 @@
 import express from "express";
-import { errorHandler } from "../../shared/middleware/errorHandler";
-import router from "../../src/router/router";
+import { errorHandler } from "../shared/middleware/errorHandler";
+import router from "./router/router";
 
 const app = express();
 
