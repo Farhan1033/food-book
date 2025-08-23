@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import { CreateRecipeRequest, UpdateRecipeRequest } from '../../shared/dto/recipe.dto';
 import { RecipeService } from '../services/recipeService';
+import { CustomRequest } from '../../shared/middleware/jwt';
 
 export class RecipeHandler {
     static async createRecipe(req: Request, res: Response): Promise<void> {
         try {
-            const userId = req.user?.id;
-            
+            const userId = (req as CustomRequest).userId
+
             if (!userId) {
                 res.status(401).json({
                     success: false,
@@ -16,9 +17,9 @@ export class RecipeHandler {
             }
 
             const recipeData: CreateRecipeRequest = req.body;
-            
+
             const [recipe, error] = await RecipeService.createRecipe(recipeData, userId);
-            
+
             if (error) {
                 res.status(400).json({
                     success: false,
@@ -44,7 +45,7 @@ export class RecipeHandler {
     static async getAllRecipes(req: Request, res: Response): Promise<void> {
         try {
             const [recipes, error] = await RecipeService.getAllRecipes();
-            
+
             if (error) {
                 res.status(400).json({
                     success: false,
@@ -70,7 +71,7 @@ export class RecipeHandler {
     static async searchRecipes(req: Request, res: Response): Promise<void> {
         try {
             const { keyword, page = '1', limit = '10' } = req.query;
-            
+
             if (!keyword || typeof keyword !== 'string') {
                 res.status(400).json({
                     success: false,
@@ -83,7 +84,7 @@ export class RecipeHandler {
             const limitNum = parseInt(limit as string) || 10;
 
             const [result, error] = await RecipeService.searchRecipes(keyword, pageNum, limitNum);
-            
+
             if (error) {
                 res.status(400).json({
                     success: false,
@@ -127,7 +128,7 @@ export class RecipeHandler {
             const limitNum = parseInt(limit as string) || 10;
 
             const [result, error] = await RecipeService.filterRecipes(filters, pageNum, limitNum);
-            
+
             if (error) {
                 res.status(400).json({
                     success: false,
@@ -160,9 +161,9 @@ export class RecipeHandler {
     static async getRecipeById(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
-            
+
             const [recipe, error] = await RecipeService.getRecipeById(id);
-            
+
             if (error) {
                 const statusCode = error.message === 'Recipe not found' ? 404 : 400;
                 res.status(statusCode).json({
@@ -189,8 +190,8 @@ export class RecipeHandler {
     static async updateRecipe(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
-            const userId = req.user?.id;
-            
+            const userId = (req as CustomRequest).userId
+
             if (!userId) {
                 res.status(401).json({
                     success: false,
@@ -200,9 +201,9 @@ export class RecipeHandler {
             }
 
             const updateData: UpdateRecipeRequest = req.body;
-            
+
             const [updatedRecipe, error] = await RecipeService.updateRecipe(id, updateData);
-            
+
             if (error) {
                 const statusCode = error.message === 'Recipe not found' ? 404 : 400;
                 res.status(statusCode).json({
@@ -229,8 +230,8 @@ export class RecipeHandler {
     static async deleteRecipe(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
-            const userId = req.user?.id;
-            
+            const userId = (req as CustomRequest).userId
+
             if (!userId) {
                 res.status(401).json({
                     success: false,
@@ -240,7 +241,7 @@ export class RecipeHandler {
             }
 
             const [success, error] = await RecipeService.deleteRecipe(id, userId);
-            
+
             if (error) {
                 let statusCode = 400;
                 if (error.message === 'Recipe not found') {
@@ -248,7 +249,7 @@ export class RecipeHandler {
                 } else if (error.message === 'Unauthorized to delete this recipe') {
                     statusCode = 403;
                 }
-                
+
                 res.status(statusCode).json({
                     success: false,
                     message: error.message
