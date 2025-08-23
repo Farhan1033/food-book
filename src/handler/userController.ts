@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { UserService } from "../services/userService";
+import { CustomRequest } from "../../shared/middleware/jwt";
+import redis from "../infrastructure/redisClient";
 
 export class UserController {
     static async signUp(req: Request, res: Response, next: NextFunction) {
@@ -26,6 +28,19 @@ export class UserController {
             });
         } catch (error) {
             next(error)
+        }
+    }
+
+    static async logout(req: Request, res: Response, next: NextFunction) {
+        try {
+            const customReq = req as CustomRequest;
+            const token = customReq.header('Authorization')?.replace('Bearer ', '');
+            if (token) {
+                await redis.del(token);
+            }
+            res.json({ message: 'Logged out successfully' });
+        } catch (err) {
+            next(err);
         }
     }
 }
